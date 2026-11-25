@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>네컷사진</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#111">
+<style>
+:root{--bg:#111;--fg:#fff;--accent:#ff5c8a;--card:#222}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
+section{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vh;padding:3vh 4vw;text-align:center}
+section.on{display:flex}
+h1{font-size:7vh;margin:0}h2{font-size:4.5vh;margin:0}
+p{margin:0;opacity:.7;font-size:2.6vh}
+button{font:inherit;font-size:3vh;font-weight:700;border:0;border-radius:99px;padding:1.6vh 5vh;background:var(--accent);color:#fff;cursor:pointer}
+button.sub{background:var(--card)}button:disabled{opacity:.5}
+.row{display:flex;gap:3vw;align-items:center;justify-content:center}
+.frame{background:var(--card);border:.6vh solid transparent;border-radius:2vh;padding:2vh;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1.2vh;font-size:2.4vh}
+.frame.sel{border-color:var(--accent)}
+.mini{display:grid;gap:.6vh;padding:1vh;border-radius:.6vh}
+.mini i{background:#888;border-radius:.4vh}
+.sw{width:6vh;height:6vh;border-radius:50%;border:.5vh solid #444;padding:0}.sw.sel{border-color:var(--accent)}
+#shoot{padding:0;background:#000}
+#cam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#hud{position:absolute;top:2vh;left:3vw;font-size:3.5vh;background:#0009;padding:1vh 2vh;border-radius:99px}
+#count{position:absolute;font-size:30vh;font-weight:800;text-shadow:0 0 4vh #000}
+#sec{position:absolute;bottom:3vh;font-size:4vh;background:#0009;padding:1vh 3vh;border-radius:99px}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:f .35s}@keyframes f{from{opacity:1}to{opacity:0}}
+#thumbs{position:absolute;right:2vw;top:2vh;display:flex;flex-direction:column;gap:1vh}
+#thumbs img{height:11vh;border-radius:1vh;border:.3vh solid #fff}
+#out{max-height:72vh;max-width:90vw;border-radius:1vh;box-shadow:0 0 3vh #000}
+#msg{min-height:3.5vh;font-size:2.6vh}
+</style>
+</head>
+<body>
+
+<section id="home" class="on">
+  <h1>📸 네컷사진</h1><p>프레임을 고르고 10초 간격으로 촬영해요</p>
+  <button id="start">시작하기</button>
+</section>
+
+<section id="pick">
+  <h2>프레임 선택</h2>
+  <div class="row" id="frames"></div>
+  <div class="row" id="colors"></div>
+  <div class="row"><button class="sub" data-go="home">뒤로</button><button id="go">촬영 시작</button></div>
+</section>
+
+<section id="shoot">
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="hud"></div><div id="thumbs"></div>
+  <div id="count"></div><div id="sec"></div><div id="flash"></div>
+</section>
+
+<section id="result">
+  <img id="out" alt="완성 사진">
+  <div id="msg"></div>
+  <div class="row"><button class="sub" id="again">처음으로</button><button id="save">저장</button></div>
+</section>
+
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+const INTERVAL = 10; // 촬영 간격(초)
+// 프레임: cols×rows, 셀 크기(w×h), 바깥 여백 p, 셀 간격 g, 하단 여백 foot
+const FRAMES = {
+  grid:  {name:"2×2 · 4컷", cols:2, rows:2, w:600, h:600, p:50, g:25, foot:90},
+  strip4:{name:"1×4 · 4컷", cols:1, rows:4, w:640, h:480, p:50, g:25, foot:110},
+  strip3:{name:"1×3 · 3컷", cols:1, rows:3, w:640, h:560, p:50, g:25, foot:110},
+};
+const COLORS = ["#ffffff","#ffd6e4","#cfe8ff","#1a1a1a"];
+let frame="grid", color=COLORS[0], shots=[], stream=null, blob=null;
+
+const $ = id => document.getElementById(id);
+const show = id => document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===id));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const n = f => f.cols*f.rows;
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>show(b.dataset.go));
+
+// ── 프레임/색상 선택
+function renderPick(){
+  $("frames").innerHTML = "";
+  for(const [k,f] of Object.entries(FRAMES)){
+    const u = 24/Math.max(f.cols*f.w,f.rows*f.h); // vh per px
+    const d=document.createElement("div"); d.className="frame"+(k===frame?" sel":"");
+    d.innerHTML=`<div class="mini" style="grid-template-columns:repeat(${f.cols},${f.w*u}vh);grid-auto-rows:${f.h*u}vh;background:${color}">${"<i></i>".repeat(n(f))}</div>${f.name}`;
+    d.onclick=()=>{frame=k;renderPick()}; $("frames").append(d);
+  }
+  $("colors").innerHTML="";
+  for(const c of COLORS){
+    const b=document.createElement("button"); b.className="sw"+(c===color?" sel":""); b.style.background=c;
+    b.onclick=()=>{color=c;renderPick()}; $("colors").append(b);
+  }
+}
+$("start").onclick=()=>{renderPick();show("pick")};
+
+// ── 촬영
+function grab(){
+  const v=$("cam"), c=document.createElement("canvas");
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  const x=c.getContext("2d"); x.translate(c.width,0); x.scale(-1,1); x.drawImage(v,0,0); // 미리보기와 동일하게 좌우반전
+  return c;
+}
+$("go").onclick = async ()=>{
+  const f=FRAMES[frame], total=n(f); shots=[]; $("thumbs").innerHTML="";
+  try{ await document.documentElement.requestFullscreen?.(); await screen.orientation?.lock?.("landscape"); }catch{}
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}},audio:false});
+    $("cam").srcObject = stream; await $("cam").play();
+  }catch(e){ alert("카메라를 사용할 수 없어요: "+e.message); return; }
+  let wake; try{ wake=await navigator.wakeLock?.request("screen"); }catch{}
+  show("shoot");
+  for(let i=0;i<total;i++){
+    $("hud").textContent=`${i+1} / ${total}`;
+    for(let t=INTERVAL;t>0;t--){
+      $("sec").textContent=`${t}초 후 촬영`;
+      $("count").textContent = t<=3 ? t : "";
+      await sleep(1000);
+    }
+    $("count").textContent=""; $("sec").textContent="";
+    const c=grab(); shots.push(c);
+    $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
+    const im=new Image(); im.src=c.toDataURL("image/jpeg",.5); $("thumbs").append(im);
+    await sleep(700);
+  }
+  stream.getTracks().forEach(t=>t.stop()); wake?.release();
+  await compose(); show("result");
+};
+
+// ── 합성 (cover 크롭)
+async function compose(){
+  const f=FRAMES[frame];
+  const W=f.p*2+f.cols*f.w+(f.cols-1)*f.g, H=f.p*2+f.rows*f.h+(f.rows-1)*f.g+f.foot;
+  const c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  x.fillStyle=color; x.fillRect(0,0,W,H);
+  shots.forEach((s,i)=>{
+    const dx=f.p+(i%f.cols)*(f.w+f.g), dy=f.p+Math.floor(i/f.cols)*(f.h+f.g);
+    const k=Math.max(f.w/s.width,f.h/s.height), sw=f.w/k, sh=f.h/k;
+    x.drawImage(s,(s.width-sw)/2,(s.height-sh)/2,sw,sh,dx,dy,f.w,f.h);
+  });
+  x.fillStyle=color==="#1a1a1a"?"#fff":"#333"; x.font="bold 40px system-ui"; x.textAlign="center";
+  x.fillText(new Date().toLocaleDateString("ko-KR"),W/2,H-f.foot/2+10);
+  blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));
+  $("out").src=URL.createObjectURL(blob); $("msg").textContent=""; $("save").disabled=false;
+}
+$("again").onclick=()=>show("home");
+
+// ── 저장: 로컬 다운로드 + 구글 드라이브
+function token(){
+  return new Promise((res,rej)=>{
+    if(!window.google) return rej(new Error("Google 스크립트 로딩 실패 (인터넷 확인)"));
+    google.accounts.oauth2.initTokenClient({
+      client_id:CLIENT_ID, scope:"https://www.googleapis.com/auth/drive.file",
+      callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||"로그인 실패")),
+      error_callback:e=>rej(new Error(e.type||"로그인 취소")),
+    }).requestAccessToken();
+  });
+}
+async function upload(tok,fn){
+  const fd=new FormData();
+  fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:"image/jpeg"})],{type:"application/json"}));
+  fd.append("file",blob);
+  const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});
+  if(!r.ok) throw new Error("업로드 실패 "+r.status);
+}
+$("save").onclick=async()=>{
+  $("save").disabled=true;
+  const fn=`네컷_${new Date().toISOString().replace(/[:T]/g,"-").slice(0,19)}.jpg`;
+  const a=document.createElement("a"); a.href=$("out").src; a.download=fn; a.click();
+  $("msg").textContent="기기에 저장됨. 드라이브 업로드 중…";
+  try{ await upload(await token(),fn); $("msg").textContent="✅ 기기 + 구글 드라이브에 저장 완료"; }
+  catch(e){ $("msg").textContent="⚠️ 기기엔 저장됨, 드라이브 실패: "+e.message; $("save").disabled=false; }
+};
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>
