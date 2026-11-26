@@ -6,95 +6,285 @@
 <title>네컷사진</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
-<meta name="theme-color" content="#111">
+<meta name="theme-color" content="#15130f">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Nanum+Myeongjo:wght@800&family=Explora&family=Modak&display=swap">
 <style>
-:root{--bg:#111;--fg:#fff;--accent:#ff5c8a;--card:#222}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;overflow:hidden;touch-action:manipulation}
-section{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vh;padding:3vh 4vw;text-align:center}
-section.on{display:flex}
-h1{font-size:7vh;margin:0}h2{font-size:4.5vh;margin:0}
-p{margin:0;opacity:.7;font-size:2.6vh}
-button{font:inherit;font-size:3vh;font-weight:700;border:0;border-radius:99px;padding:1.6vh 5vh;background:var(--accent);color:#fff;cursor:pointer}
-button.sub{background:var(--card)}button:disabled{opacity:.5}
-.row{display:flex;gap:3vw;align-items:center;justify-content:center}
-.frame{background:var(--card);border:.6vh solid transparent;border-radius:2vh;padding:2vh;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1.2vh;font-size:2.4vh}
-.frame.sel{border-color:var(--accent)}
-.mini{display:grid;gap:.6vh;padding:1vh;border-radius:.6vh}
-.mini i{background:#888;border-radius:.4vh}
-.sw{width:6vh;height:6vh;border-radius:50%;border:.5vh solid #444;padding:0}.sw.sel{border-color:var(--accent)}
-#shoot{padding:0;background:#000}
+:root{
+  --ink:#15130f; --ink-2:#1e1b16; --line:#38332b; --mute:#a8a195; --paper:#f6f3ec;
+  --tomato:#ff4d1c; --tomato-press:#e63e10;
+  --ease:cubic-bezier(.16,1,.3,1);
+  font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);overflow:hidden;touch-action:manipulation;overscroll-behavior:none}
+::selection{background:var(--tomato);color:var(--ink)}
+:focus-visible{outline:3px solid var(--tomato);outline-offset:3px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+svg{display:block}
+
+section{position:fixed;inset:0;display:none;min-height:100dvh}
+section.on{display:grid}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;gap:1.4vh;font-weight:700;font-size:max(18px,2.6vh);letter-spacing:-.01em;
+  padding:max(14px,2.1vh) max(26px,4vh);border-radius:99px;background:var(--tomato);color:var(--ink);
+  transition:transform .25s var(--ease),background .2s}
+.btn:active{transform:scale(.97);background:var(--tomato-press)}
+.btn:disabled{opacity:.45;pointer-events:none}
+.btn.ghost{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px var(--line)}
+.btn.ghost:active{background:var(--ink-2)}
+.btn.paper{background:var(--paper);color:var(--ink)}
+.btn.paper:active{background:#e4dfd3}
+.btn svg{width:max(20px,2.8vh);height:max(20px,2.8vh)}
+
+/* 홈 */
+#home{background:var(--tomato);color:var(--ink);grid-template-columns:1.15fr .85fr;align-items:center;padding:0 7vw}
+#home h1{margin:0;font-size:min(36vh,24vw);font-weight:900;line-height:.82;letter-spacing:-.05em}
+#home p{margin:3.5vh 0 5vh;font-size:max(18px,3.1vh);font-weight:600;line-height:1.4;max-width:20em;letter-spacing:-.01em;word-break:keep-all;text-wrap:balance}
+.strip{justify-self:center;display:grid;gap:1.2vh;padding:1.8vh;background:var(--paper);border-radius:1.2vh;
+  transform:rotate(-5deg);box-shadow:0 2.4vh 5vh -1vh rgba(21,19,15,.45)}
+.strip i{display:block;width:21vh;aspect-ratio:4/3;background:var(--ink);border-radius:.6vh;position:relative;overflow:hidden}
+.strip i::after{content:"";position:absolute;inset:0;opacity:0;animation:fill 8s infinite}
+.strip i:nth-child(1)::after{background:#ffd3c4;animation-name:f1}
+.strip i:nth-child(2)::after{background:#cfe0ff;animation-name:f2}
+.strip i:nth-child(3)::after{background:var(--tomato);animation-name:f3}
+.strip i:nth-child(4)::after{background:#ece6d6;animation-name:f4}
+@keyframes f1{0%,6%{opacity:0;transform:scale(1.15)}9%,92%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes f2{0%,26%{opacity:0;transform:scale(1.15)}29%,92%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes f3{0%,46%{opacity:0;transform:scale(1.15)}49%,92%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes f4{0%,66%{opacity:0;transform:scale(1.15)}69%,92%{opacity:1;transform:none}100%{opacity:0}}
+
+/* 프레임 선택 */
+#pick{grid-template-columns:minmax(0,1fr) minmax(320px,34vw);gap:5vw;align-items:center;padding:5vh 5vw}
+.stage{display:grid;place-items:center;min-width:0}
+#preview{max-width:100%;max-height:84vh;border-radius:1.4vh;box-shadow:0 3vh 6vh -2vh rgba(0,0,0,.7);transition:background .3s}
+.panel{display:flex;flex-direction:column;gap:3.4vh;max-height:100%}
+.panel h2{margin:0;font-size:max(24px,4.4vh);font-weight:800;letter-spacing:-.03em}
+.panel h3{margin:0 0 1.4vh;font-size:max(14px,2vh);font-weight:600;color:var(--mute)}
+.frames{display:grid}
+.frame{display:grid;grid-template-columns:max(64px,9vh) 1fr;gap:2vh;align-items:center;text-align:left;
+  padding:max(8px,1.2vh) 0;border-top:1px solid var(--line);transition:padding .3s var(--ease),opacity .2s;opacity:.62}
+.frame:last-child{border-bottom:1px solid var(--line)}
+.frame canvas{height:max(46px,7vh);width:auto;max-width:100%;justify-self:center;border-radius:.6vh}
+.frame b{display:block;font-size:max(18px,2.7vh);font-weight:700;letter-spacing:-.02em}
+.frame span{display:block;font-size:max(14px,2vh);color:var(--mute);margin-top:.4vh}
+.frame[aria-checked=true]{opacity:1;padding-left:1.6vh;box-shadow:inset 3px 0 0 var(--tomato)}
+.swatches{display:flex;gap:2vh}
+.sw{display:grid;place-items:center;font-size:max(15px,2.4vh);line-height:1;width:max(40px,6vh);height:max(40px,6vh);border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);transition:transform .25s var(--ease)}
+.sw[aria-checked=true]{box-shadow:0 0 0 3px var(--ink),0 0 0 6px var(--tomato)}
+.sw:active{transform:scale(.92)}
+.actions{display:flex;gap:2vh;margin-top:1vh}
+.actions .btn:last-child{flex:1;justify-content:center}
+
+/* 촬영 */
+#shoot{background:#0d0c09;grid-template-columns:1fr auto 1fr;align-items:center;gap:3vw;padding:0 3vw}
+#shoot{--ar:1.3333}
+#vf{position:relative;height:min(82vh,calc(66vw / var(--ar)));aspect-ratio:var(--ar);border-radius:1.6vh;overflow:hidden;background:#000;
+  box-shadow:0 0 0 1px var(--line)}
 #cam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-#hud{position:absolute;top:2vh;left:3vw;font-size:3.5vh;background:#0009;padding:1vh 2vh;border-radius:99px}
-#count{position:absolute;font-size:30vh;font-weight:800;text-shadow:0 0 4vh #000}
-#sec{position:absolute;bottom:3vh;font-size:4vh;background:#0009;padding:1vh 3vh;border-radius:99px}
+#count{position:absolute;inset:0;display:grid;place-items:center;font-size:42vh;font-weight:900;letter-spacing:-.05em;color:var(--paper);
+  text-shadow:0 .6vh 4vh rgba(0,0,0,.55);pointer-events:none}
+#count.pop{animation:pop .9s var(--ease)}
+@keyframes pop{from{transform:scale(1.5);opacity:0}30%{opacity:1}to{transform:scale(1);opacity:1}}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-#flash.go{animation:f .35s}@keyframes f{from{opacity:1}to{opacity:0}}
-#thumbs{position:absolute;right:2vw;top:2vh;display:flex;flex-direction:column;gap:1vh}
-#thumbs img{height:11vh;border-radius:1vh;border:.3vh solid #fff}
-#out{max-height:72vh;max-width:90vw;border-radius:1vh;box-shadow:0 0 3vh #000}
-#msg{min-height:3.5vh;font-size:2.6vh}
+#flash.go{animation:flash .45s ease-out}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+#timer{position:absolute;left:0;right:0;bottom:0;height:.9vh;background:rgba(255,255,255,.18)}
+#timer b{display:block;height:100%;background:var(--tomato);transform-origin:left;transform:scaleX(0)}
+#timer b.run{animation:run var(--dur) linear forwards}
+@keyframes run{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.rail{display:flex;flex-direction:column;gap:2.4vh}
+.rail.l{align-items:flex-end;text-align:right}
+#hud{font-size:max(16px,2.2vh);color:var(--mute);font-weight:600}
+#hud b{display:block;font-size:max(40px,9vh);color:var(--paper);font-weight:900;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+#sec{font-size:max(16px,2.4vh);font-weight:600;color:var(--paper);font-variant-numeric:tabular-nums}
+#thumbs{display:flex;flex-direction:column;gap:1.2vh;align-items:flex-start}
+#thumbs img{height:9vh;width:auto;aspect-ratio:var(--ar);object-fit:cover;border-radius:.8vh;animation:in .5s var(--ease)}
+@keyframes in{from{opacity:0;transform:translateY(1.5vh) scale(.95)}}
+
+/* 결과 */
+#result{grid-template-columns:minmax(0,1fr) minmax(300px,30vw);gap:5vw;align-items:center;padding:5vh 5vw}
+#out{max-width:100%;max-height:84vh;min-width:0;border-radius:1.4vh;box-shadow:0 3vh 6vh -2vh rgba(0,0,0,.7);justify-self:center}
+#result h2{margin:0 0 1.4vh;font-size:max(28px,5.4vh);font-weight:900;letter-spacing:-.04em;line-height:1.05}
+#msg{min-height:7vh;display:flex;gap:1.2vh;align-items:flex-start;font-size:max(15px,2.1vh);line-height:1.45;color:var(--mute);margin-bottom:3vh}
+#msg.ok{color:var(--paper)}#msg.err{color:#ff9a7e}
+#msg svg{flex:none;width:max(20px,2.6vh);height:max(20px,2.6vh);margin-top:.2vh}
+#msg.busy::before{content:"";width:max(16px,2.2vh);height:max(16px,2.2vh);border-radius:50%;border:3px solid var(--line);border-top-color:var(--tomato);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stack{display:grid;gap:1.6vh}
+.stack .btn{justify-content:center}
+
+@media (orientation:portrait){
+  #home,#pick,#result{grid-template-columns:1fr;align-content:center;gap:4vh}
+  #shoot{grid-template-columns:1fr}.rail{display:none}
+  #vf{height:auto;width:94vw}
+}
+@media (prefers-reduced-motion:reduce){
+  .strip i::after{animation:none;opacity:1}
+  *{transition-duration:.01ms!important}
+}
 </style>
 </head>
 <body>
 
 <section id="home" class="on">
-  <h1>📸 네컷사진</h1><p>프레임을 고르고 10초 간격으로 촬영해요</p>
-  <button id="start">시작하기</button>
+  <div>
+    <h1>네컷</h1>
+    <p>프레임을 고르면 10초마다 한 장씩, 알아서 찍어 드려요.</p>
+    <button class="btn paper" id="start">시작하기
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+  <div class="strip" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 </section>
 
 <section id="pick">
-  <h2>프레임 선택</h2>
-  <div class="row" id="frames"></div>
-  <div class="row" id="colors"></div>
-  <div class="row"><button class="sub" data-go="home">뒤로</button><button id="go">촬영 시작</button></div>
+  <div class="stage"><canvas id="preview" width="1000" height="750"></canvas></div>
+  <div class="panel">
+    <h2>프레임을 골라 주세요</h2>
+    <div>
+      <h3 id="lf">프레임</h3>
+      <div class="frames" id="frames" role="radiogroup" aria-labelledby="lf"></div>
+    </div>
+    <div>
+      <h3 id="lc">배경색 · 글꼴</h3>
+      <div class="swatches" id="colors" role="radiogroup" aria-labelledby="lc"></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" data-go="home">뒤로</button>
+      <button class="btn" id="go">촬영 시작</button>
+    </div>
+  </div>
 </section>
 
 <section id="shoot">
-  <video id="cam" playsinline muted autoplay></video>
-  <div id="hud"></div><div id="thumbs"></div>
-  <div id="count"></div><div id="sec"></div><div id="flash"></div>
+  <div class="rail l"><div id="hud"></div></div>
+  <div id="vf">
+    <video id="cam" playsinline muted autoplay></video>
+    <div id="count" aria-live="assertive"></div>
+    <div id="flash"></div>
+    <div id="timer"><b></b></div>
+  </div>
+  <div class="rail"><div id="sec"></div><div id="thumbs"></div></div>
 </section>
 
 <section id="result">
-  <img id="out" alt="완성 사진">
-  <div id="msg"></div>
-  <div class="row"><button class="sub" id="again">처음으로</button><button id="save">저장</button></div>
+  <img id="out" alt="완성된 네컷사진">
+  <div>
+    <h2>다 찍었어요</h2>
+    <div id="msg" aria-live="polite">저장하면 이 기기와 구글 드라이브에 함께 보관돼요.</div>
+    <div class="stack">
+      <button class="btn" id="save">저장하기</button>
+      <button class="btn ghost" id="again">처음으로</button>
+    </div>
+  </div>
 </section>
 
 <script src="config.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
-const INTERVAL = 10; // 촬영 간격(초)
-// 프레임: cols×rows, 셀 크기(w×h), 바깥 여백 p, 셀 간격 g, 하단 여백 foot
+const INTERVAL = +new URLSearchParams(location.search).get("t") || 10; // 촬영 간격(초)
+// 시트: 가로형 4:3(1600×1200) / 세로형 3:4(1200×1600). ar = 컷의 가로/세로 비율.
+// 스트립은 인화지 한 장에 같은 줄을 copies만큼 나란히 배치한다.
+const L={W:1600,H:1200}, P={W:1200,H:1600};
+const M=28, G=14, HEAD=88, TITLE="Hi-BRC 20th";
 const FRAMES = {
-  grid:  {name:"2×2 · 4컷", cols:2, rows:2, w:600, h:600, p:50, g:25, foot:90},
-  strip4:{name:"1×4 · 4컷", cols:1, rows:4, w:640, h:480, p:50, g:25, foot:110},
-  strip3:{name:"1×3 · 3컷", cols:1, rows:3, w:640, h:560, p:50, g:25, foot:110},
+  grid:  {name:"2×2 가로",  sub:"4컷 · 4:3",            ...L, ar:4/3, cols:2, rows:2, copies:1, title:true},
+  gridV: {name:"2×2 세로",  sub:"4컷 · 3:4",            ...P, ar:3/4, cols:2, rows:2, copies:1, title:true},
+  strip4:{name:"4컷 스트립", sub:"4컷 · 3:4 · 두 줄 인화", ...P, ar:4/3, cols:1, rows:4, copies:2, cgMin:90},
+  strip3:{name:"3컷 스트립", sub:"3컷 · 3:4 · 두 줄 인화", ...P, ar:4/3, cols:1, rows:3, copies:2, cgMin:80, title:true, sym:true},
 };
-const COLORS = ["#ffffff","#ffd6e4","#cfe8ff","#1a1a1a"];
+// 배경색마다 어울리는 글꼴과 프레임 질감
+// ink=글자색, sp=자간(px), ts=제목 크기, dy=제목 세로 보정, dfam/dwt=날짜 글꼴(없으면 제목과 동일), r=사진 모서리, bw/bc=사진 안쪽 테두리, pill=날짜를 알약으로
+const COLORS = [
+  {c:"#f6f3ec", n:"종이 흰색 · 깔끔", dark:false, fam:"Pretendard Variable", wt:800, ink:"#15130f", sp:-2, r:10, bw:0},
+  {c:"#ffd3c4", n:"살구 · 귀여움",   dark:false, fam:"Modak", wt:400, ts:112, dy:18, dfam:"Pretendard Variable", dwt:700, ink:"#d63a14", sp:1,  r:34, bw:0, pill:{bg:"#d63a14",fg:"#ffd3c4"}},
+  {c:"#cfe0ff", n:"하늘 · 발랄",     dark:false, fam:"Do Hyeon",       wt:400, ink:"#1d3a8f", sp:2,  r:16, bw:7, bc:"#ffffff", pill:{bg:"#ffffff",fg:"#1d3a8f"}},
+  {c:"#1e1b16", n:"먹색 · 시크",     dark:true,  fam:"Explora", wt:400, ts:110, dfam:"Nanum Myeongjo", dwt:800, ink:"#f6f3ec", sp:0,  r:2,  bw:2, bc:"rgba(246,243,236,.4)"},
+];
 let frame="grid", color=COLORS[0], shots=[], stream=null, blob=null;
 
 const $ = id => document.getElementById(id);
 const show = id => document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===id));
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
-const n = f => f.cols*f.rows;
+const count = f => f.cols*f.rows;
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>show(b.dataset.go));
+// 캔버스는 글꼴이 로드돼야 제대로 그려진다
+const fontsReady = Promise.all(COLORS.flatMap(o=>[document.fonts.load(`${o.wt} 40px "${o.fam}"`,TITLE+"0123456789"), o.dfam&&document.fonts.load(`${o.dwt} 30px "${o.dfam}"`,"0123456789")])).catch(()=>{});
+fontsReady.then(()=>$("pick").classList.contains("on")&&renderPick());
 
-// ── 프레임/색상 선택
+// ── 시트 레이아웃: 컷 비율 ar 고정, 가능한 크게. 스트립은 남는 가로폭을 두 줄 사이 간격으로 쓴다.
+function layout(f){
+  const top=f.title&&!f.sym?HEAD:0, aw=f.W-2*M, ah=f.H-2*M-top, cgMin=f.cgMin??0;
+  const wW=(aw-(f.copies-1)*cgMin-f.copies*(f.cols-1)*G)/(f.copies*f.cols);
+  const wH=(ah-(f.rows-1)*G)/(f.rows/f.ar);
+  const w=Math.floor(Math.min(wW,wH)), h=Math.round(w/f.ar);
+  const sw=f.cols*w+(f.cols-1)*G, bh=f.rows*h+(f.rows-1)*G;
+  const cg=f.copies>1?(aw-f.copies*sw)/(f.copies-1):0;
+  const x0=(f.W-(f.copies*sw+(f.copies-1)*cg))/2, y0=M+top+(ah-bh)/2, out=[];
+  for(let c=0;c<f.copies;c++) for(let i=0;i<count(f);i++)
+    out.push({i, x:x0+c*(sw+cg)+(i%f.cols)*(w+G), y:y0+Math.floor(i/f.cols)*(h+G), w, h});
+  return out;
+}
+// 시트를 그린다. shots가 없으면 빈 칸 자리표시.
+function drawSheet(cv, key, col, shots){
+  const f=FRAMES[key], x=cv.getContext("2d"), cells=layout(f);
+  const k=cv.width/f.W; x.setTransform(k,0,0,k,0,0);
+  x.fillStyle=col.c; x.fillRect(0,0,f.W,f.H);
+  for(const r of cells){
+    x.save(); x.beginPath(); x.roundRect(r.x,r.y,r.w,r.h,col.r); x.clip();
+    const s=shots&&shots[r.i];
+    if(s){ // cover 크롭으로 컷 비율을 채움
+      const q=Math.max(r.w/s.width,r.h/s.height), sw=r.w/q, sh=r.h/q;
+      x.drawImage(s,(s.width-sw)/2,(s.height-sh)/2,sw,sh,r.x,r.y,r.w,r.h);
+    } else { x.fillStyle=col.dark?"rgba(255,255,255,.12)":"rgba(21,19,15,.12)"; x.fillRect(r.x,r.y,r.w,r.h); }
+    if(col.bw){ x.lineWidth=col.bw*2; x.strokeStyle=col.bc; x.beginPath(); x.roundRect(r.x,r.y,r.w,r.h,col.r); x.stroke(); }
+    x.restore();
+  }
+  const d=(n=>`${n.getFullYear()}.${String(n.getMonth()+1).padStart(2,"0")}.${String(n.getDate()).padStart(2,"0")}`)(new Date());
+  const left=Math.min(...cells.map(r=>r.x)), right=Math.max(...cells.map(r=>r.x+r.w));
+  x.textBaseline="middle"; x.fillStyle=col.ink;
+  if(f.title){ // 상단 헤더: 제목 왼쪽, 날짜 오른쪽 — 둘 다 사진 가장자리에 정렬
+    const ys=cells.map(r=>r.y), yb=Math.max(...cells.map(r=>r.y+r.h));
+    const cy=f.sym?Math.min(...ys)/2:M+HEAD/2-6, cd=f.sym?(yb+f.H)/2:cy; // sym: 제목은 위 여백, 날짜는 아래 여백
+    x.textAlign="left"; x.font=`${col.wt} ${col.ts??68}px "${col.fam}",sans-serif`; x.letterSpacing=col.sp+"px";
+    x.fillText(TITLE,left,cy+(col.dy??0)); x.letterSpacing="0px";
+    if(shots){
+      x.font=`${col.dwt??col.wt} 30px "${col.dfam??col.fam}",sans-serif`; x.textAlign="right";
+      if(col.pill){
+        const tw=x.measureText(d).width, pw=tw+48, ph=54;
+        x.fillStyle=col.pill.bg; x.beginPath(); x.roundRect(right-pw,cd-ph/2,pw,ph,ph/2); x.fill();
+        x.fillStyle=col.pill.fg; x.fillText(d,right-24,cd+1);
+      } else { x.globalAlpha=.75; x.fillText(d,right,cd); x.globalAlpha=1; }
+    }
+  } else if(shots){ // 스트립: 두 줄 사이에 세로로
+    x.save(); x.translate(f.W/2,f.H/2); x.rotate(-Math.PI/2); x.textAlign="center";
+    x.globalAlpha=.75; x.font=`${col.dwt??col.wt} 30px "${col.dfam??col.fam}",sans-serif`; x.letterSpacing="3px"; x.fillText(d,0,0); x.restore();
+  }
+}
+
+// ── 프레임/색상 선택 UI
 function renderPick(){
-  $("frames").innerHTML = "";
-  for(const [k,f] of Object.entries(FRAMES)){
-    const u = 24/Math.max(f.cols*f.w,f.rows*f.h); // vh per px
-    const d=document.createElement("div"); d.className="frame"+(k===frame?" sel":"");
-    d.innerHTML=`<div class="mini" style="grid-template-columns:repeat(${f.cols},${f.w*u}vh);grid-auto-rows:${f.h*u}vh;background:${color}">${"<i></i>".repeat(n(f))}</div>${f.name}`;
-    d.onclick=()=>{frame=k;renderPick()}; $("frames").append(d);
+  const f=FRAMES[frame], pv=$("preview");
+  pv.width=Math.round(f.W*.625); pv.height=Math.round(f.H*.625);
+  drawSheet(pv,frame,color,null);
+  const fr=$("frames"); fr.innerHTML="";
+  for(const [k,g] of Object.entries(FRAMES)){
+    const b=document.createElement("button"); b.className="frame"; b.setAttribute("role","radio"); b.setAttribute("aria-checked",k===frame);
+    b.innerHTML=`<canvas></canvas><div><b>${g.name}</b><span>${g.sub}</span></div>`;
+    const cv=b.querySelector("canvas"); cv.width=Math.round(g.W*.1); cv.height=Math.round(g.H*.1);
+    drawSheet(cv,k,color,null);
+    b.onclick=()=>{frame=k;renderPick()}; fr.append(b);
   }
-  $("colors").innerHTML="";
-  for(const c of COLORS){
-    const b=document.createElement("button"); b.className="sw"+(c===color?" sel":""); b.style.background=c;
-    b.onclick=()=>{color=c;renderPick()}; $("colors").append(b);
+  const cs=$("colors"); cs.innerHTML=""; $("lc").textContent="배경색 · 글꼴 — "+color.n;
+  for(const o of COLORS){
+    const b=document.createElement("button"); b.className="sw"; b.style.background=o.c; b.textContent="Aa";
+    b.style.color=o.ink; b.style.fontFamily=`"${o.fam}",sans-serif`; b.style.fontWeight=o.wt;
+    b.setAttribute("role","radio"); b.setAttribute("aria-checked",o===color); b.setAttribute("aria-label",o.n);
+    b.onclick=()=>{color=o;renderPick()}; cs.append(b);
   }
+  pv.style.background=color.c;
 }
 $("start").onclick=()=>{renderPick();show("pick")};
 
@@ -105,8 +295,12 @@ function grab(){
   const x=c.getContext("2d"); x.translate(c.width,0); x.scale(-1,1); x.drawImage(v,0,0); // 미리보기와 동일하게 좌우반전
   return c;
 }
+function restartTimer(){
+  const b=document.querySelector("#timer b"); b.classList.remove("run"); void b.offsetWidth;
+  b.style.setProperty("--dur",INTERVAL+"s"); b.classList.add("run");
+}
 $("go").onclick = async ()=>{
-  const f=FRAMES[frame], total=n(f); shots=[]; $("thumbs").innerHTML="";
+  const f=FRAMES[frame], total=count(f); shots=[]; $("thumbs").innerHTML=""; $("shoot").style.setProperty("--ar",f.ar);
   try{ await document.documentElement.requestFullscreen?.(); await screen.orientation?.lock?.("landscape"); }catch{}
   try{
     stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}},audio:false});
@@ -115,48 +309,43 @@ $("go").onclick = async ()=>{
   let wake; try{ wake=await navigator.wakeLock?.request("screen"); }catch{}
   show("shoot");
   for(let i=0;i<total;i++){
-    $("hud").textContent=`${i+1} / ${total}`;
+    $("hud").innerHTML=`<b>${i+1} / ${total}</b>번째 컷`;
+    restartTimer();
     for(let t=INTERVAL;t>0;t--){
-      $("sec").textContent=`${t}초 후 촬영`;
-      $("count").textContent = t<=3 ? t : "";
+      $("sec").textContent=`${t}초 뒤 촬영`;
+      const c=$("count"); c.textContent=t<=3?t:""; c.classList.remove("pop"); void c.offsetWidth; if(t<=3) c.classList.add("pop");
       await sleep(1000);
     }
     $("count").textContent=""; $("sec").textContent="";
     const c=grab(); shots.push(c);
     $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
-    const im=new Image(); im.src=c.toDataURL("image/jpeg",.5); $("thumbs").append(im);
-    await sleep(700);
+    const im=new Image(); im.alt=`${i+1}번째 컷`; im.src=c.toDataURL("image/jpeg",.5); $("thumbs").append(im);
+    await sleep(800);
   }
   stream.getTracks().forEach(t=>t.stop()); wake?.release();
   await compose(); show("result");
 };
 
-// ── 합성 (cover 크롭)
+// ── 합성
 async function compose(){
-  const f=FRAMES[frame];
-  const W=f.p*2+f.cols*f.w+(f.cols-1)*f.g, H=f.p*2+f.rows*f.h+(f.rows-1)*f.g+f.foot;
-  const c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
-  x.fillStyle=color; x.fillRect(0,0,W,H);
-  shots.forEach((s,i)=>{
-    const dx=f.p+(i%f.cols)*(f.w+f.g), dy=f.p+Math.floor(i/f.cols)*(f.h+f.g);
-    const k=Math.max(f.w/s.width,f.h/s.height), sw=f.w/k, sh=f.h/k;
-    x.drawImage(s,(s.width-sw)/2,(s.height-sh)/2,sw,sh,dx,dy,f.w,f.h);
-  });
-  x.fillStyle=color==="#1a1a1a"?"#fff":"#333"; x.font="bold 40px system-ui"; x.textAlign="center";
-  x.fillText(new Date().toLocaleDateString("ko-KR"),W/2,H-f.foot/2+10);
+  const f=FRAMES[frame], c=document.createElement("canvas"); c.width=f.W; c.height=f.H; await fontsReady;
+  drawSheet(c,frame,color,shots);
   blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));
-  $("out").src=URL.createObjectURL(blob); $("msg").textContent=""; $("save").disabled=false;
+  $("out").src=URL.createObjectURL(blob); setMsg("저장하면 이 기기와 구글 드라이브에 함께 보관돼요."); $("save").disabled=false; $("save").textContent="저장하기";
 }
 $("again").onclick=()=>show("home");
 
 // ── 저장: 로컬 다운로드 + 구글 드라이브
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const WARN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>';
+function setMsg(t,cls="",icon=""){ const m=$("msg"); m.className=cls; m.innerHTML=icon+`<span>${t}</span>`; }
 function token(){
   return new Promise((res,rej)=>{
-    if(!window.google) return rej(new Error("Google 스크립트 로딩 실패 (인터넷 확인)"));
+    if(!window.google) return rej(new Error("Google 스크립트를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."));
     google.accounts.oauth2.initTokenClient({
       client_id:CLIENT_ID, scope:"https://www.googleapis.com/auth/drive.file",
-      callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||"로그인 실패")),
-      error_callback:e=>rej(new Error(e.type||"로그인 취소")),
+      callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||"로그인에 실패했어요.")),
+      error_callback:e=>rej(new Error(e.type==="popup_closed"?"로그인 창이 닫혔어요.":(e.type||"로그인을 취소했어요."))),
     }).requestAccessToken();
   });
 }
@@ -165,15 +354,15 @@ async function upload(tok,fn){
   fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:"image/jpeg"})],{type:"application/json"}));
   fd.append("file",blob);
   const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});
-  if(!r.ok) throw new Error("업로드 실패 "+r.status);
+  if(!r.ok) throw new Error("드라이브 업로드에 실패했어요. (오류 "+r.status+")");
 }
 $("save").onclick=async()=>{
   $("save").disabled=true;
   const fn=`네컷_${new Date().toISOString().replace(/[:T]/g,"-").slice(0,19)}.jpg`;
   const a=document.createElement("a"); a.href=$("out").src; a.download=fn; a.click();
-  $("msg").textContent="기기에 저장됨. 드라이브 업로드 중…";
-  try{ await upload(await token(),fn); $("msg").textContent="✅ 기기 + 구글 드라이브에 저장 완료"; }
-  catch(e){ $("msg").textContent="⚠️ 기기엔 저장됨, 드라이브 실패: "+e.message; $("save").disabled=false; }
+  setMsg("기기에 저장했어요. 드라이브에 올리는 중…","busy");
+  try{ await upload(await token(),fn); setMsg("기기와 구글 드라이브에 모두 저장했어요.","ok",CHECK); $("save").textContent="저장 완료"; }
+  catch(e){ setMsg(`기기에는 저장됐어요. ${e.message}`,"err",WARN); $("save").disabled=false; $("save").textContent="드라이브에 다시 올리기"; }
 };
 
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
