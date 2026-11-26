@@ -83,8 +83,7 @@ section.on{display:grid}
 #vf{position:relative;height:min(82vh,calc(66vw / var(--ar)));aspect-ratio:var(--ar);border-radius:1.6vh;overflow:hidden;background:#000;
   box-shadow:0 0 0 1px var(--line)}
 #cam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-#count{position:absolute;inset:0;display:grid;place-items:center;font-size:42vh;font-weight:900;letter-spacing:-.05em;color:var(--paper);
-  text-shadow:0 .6vh 4vh rgba(0,0,0,.55);pointer-events:none}
+#count{min-height:1em;font-size:max(96px,30vh);line-height:1;font-weight:900;letter-spacing:-.05em;color:var(--tomato);font-variant-numeric:tabular-nums;transform-origin:right center}
 #count.pop{animation:pop .9s var(--ease)}
 @keyframes pop{from{transform:scale(1.5);opacity:0}30%{opacity:1}to{transform:scale(1);opacity:1}}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
@@ -117,7 +116,7 @@ section.on{display:grid}
 
 @media (orientation:portrait){
   #home,#pick,#result{grid-template-columns:1fr;align-content:center;gap:4vh}
-  #shoot{grid-template-columns:1fr}.rail{display:none}
+  #shoot{grid-template-columns:1fr}.rail:not(.l){display:none}.rail.l{align-items:center;text-align:center}
   #vf{height:auto;width:94vw}
 }
 @media (prefers-reduced-motion:reduce){
@@ -159,10 +158,9 @@ section.on{display:grid}
 </section>
 
 <section id="shoot">
-  <div class="rail l"><div id="hud"></div></div>
+  <div class="rail l"><div id="hud"></div><div id="count" aria-live="assertive"></div></div>
   <div id="vf">
     <video id="cam" playsinline muted autoplay></video>
-    <div id="count" aria-live="assertive"></div>
     <div id="flash"></div>
     <div id="timer"><b></b></div>
   </div>
@@ -203,7 +201,7 @@ const COLORS = [
   {c:"#cfe0ff", n:"하늘 · 발랄",     dark:false, fam:"Do Hyeon",       wt:400, ink:"#1d3a8f", sp:2,  r:16, bw:7, bc:"#ffffff", pill:{bg:"#ffffff",fg:"#1d3a8f"}},
   {c:"#1e1b16", n:"먹색 · 시크",     dark:true,  fam:"Explora", wt:400, ts:110, dfam:"Nanum Myeongjo", dwt:800, ink:"#f6f3ec", sp:0,  r:2,  bw:2, bc:"rgba(246,243,236,.4)"},
 ];
-let frame="grid", color=COLORS[0], shots=[], stream=null, blob=null;
+let frame="grid", color=COLORS[0], shots=[], stream=null, blob=null, clips=[], video=null, files=[];
 
 const $ = id => document.getElementById(id);
 const show = id => document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===id));
@@ -234,10 +232,12 @@ function drawSheet(cv, key, col, shots){
   x.fillStyle=col.c; x.fillRect(0,0,f.W,f.H);
   for(const r of cells){
     x.save(); x.beginPath(); x.roundRect(r.x,r.y,r.w,r.h,col.r); x.clip();
-    const s=shots&&shots[r.i];
-    if(s){ // cover 크롭으로 컷 비율을 채움
-      const q=Math.max(r.w/s.width,r.h/s.height), sw=r.w/q, sh=r.h/q;
-      x.drawImage(s,(s.width-sw)/2,(s.height-sh)/2,sw,sh,r.x,r.y,r.w,r.h);
+    const s=shots&&shots[r.i], iw=s&&(s.videoWidth||s.width), ih=s&&(s.videoHeight||s.height);
+    if(iw){ // cover 크롭으로 컷 비율을 채움 (video는 좌우반전해서 그림)
+      const q=Math.max(r.w/iw,r.h/ih), sw=r.w/q, sh=r.h/q;
+      if(s.videoWidth){ x.translate(2*r.x+r.w,0); x.scale(-1,1); }
+      x.drawImage(s,(iw-sw)/2,(ih-sh)/2,sw,sh,r.x,r.y,r.w,r.h);
+      if(s.videoWidth) x.setTransform(k,0,0,k,0,0);
     } else { x.fillStyle=col.dark?"rgba(255,255,255,.12)":"rgba(21,19,15,.12)"; x.fillRect(r.x,r.y,r.w,r.h); }
     if(col.bw){ x.lineWidth=col.bw*2; x.strokeStyle=col.bc; x.beginPath(); x.roundRect(r.x,r.y,r.w,r.h,col.r); x.stroke(); }
     x.restore();
@@ -289,6 +289,12 @@ function renderPick(){
 $("start").onclick=()=>{renderPick();show("pick")};
 
 // ── 촬영
+const MIME=["video/mp4;codecs=avc1","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
+function record(src,bps){ // 녹화 시작, 호출하면 멈추고 Blob을 돌려주는 함수를 반환
+  const ch=[], r=new MediaRecorder(src,{mimeType:MIME,videoBitsPerSecond:bps});
+  r.ondataavailable=e=>e.data.size&&ch.push(e.data); r.start();
+  return ()=>new Promise(res=>{ r.onstop=()=>res(new Blob(ch,{type:MIME})); r.stop(); });
+}
 function grab(){
   const v=$("cam"), c=document.createElement("canvas");
   c.width=v.videoWidth; c.height=v.videoHeight;
@@ -300,7 +306,7 @@ function restartTimer(){
   b.style.setProperty("--dur",INTERVAL+"s"); b.classList.add("run");
 }
 $("go").onclick = async ()=>{
-  const f=FRAMES[frame], total=count(f); shots=[]; $("thumbs").innerHTML=""; $("shoot").style.setProperty("--ar",f.ar);
+  const f=FRAMES[frame], total=count(f); shots=[]; clips=[]; video=null; $("thumbs").innerHTML=""; $("shoot").style.setProperty("--ar",f.ar);
   try{ await document.documentElement.requestFullscreen?.(); await screen.orientation?.lock?.("landscape"); }catch{}
   try{
     stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}},audio:false});
@@ -311,6 +317,7 @@ $("go").onclick = async ()=>{
   for(let i=0;i<total;i++){
     $("hud").innerHTML=`<b>${i+1} / ${total}</b>번째 컷`;
     restartTimer();
+    let endClip=null; try{ if(MIME) endClip=record(stream,3e6); }catch{}
     for(let t=INTERVAL;t>0;t--){
       $("sec").textContent=`${t}초 뒤 촬영`;
       const c=$("count"); c.textContent=t<=3?t:""; c.classList.remove("pop"); void c.offsetWidth; if(t<=3) c.classList.add("pop");
@@ -318,20 +325,38 @@ $("go").onclick = async ()=>{
     }
     $("count").textContent=""; $("sec").textContent="";
     const c=grab(); shots.push(c);
+    if(endClip) clips.push(await endClip());
     $("flash").classList.remove("go"); void $("flash").offsetWidth; $("flash").classList.add("go");
     const im=new Image(); im.alt=`${i+1}번째 컷`; im.src=c.toDataURL("image/jpeg",.5); $("thumbs").append(im);
     await sleep(800);
   }
   stream.getTracks().forEach(t=>t.stop()); wake?.release();
   await compose(); show("result");
+  video=await makeVideo().catch(()=>null);
+  setMsg(video?"저장하면 사진과 영상이 이 기기와 구글 드라이브에 함께 보관돼요.":"저장하면 이 기기와 구글 드라이브에 함께 보관돼요."); $("save").disabled=false;
 };
+// 컷별 영상을 사진과 같은 배치로 동시에 재생하며 캔버스를 녹화
+async function makeVideo(){
+  if(!MIME||clips.length<count(FRAMES[frame])) return null;
+  const f=FRAMES[frame], c=document.createElement("canvas"); c.width=Math.round(f.W*.75); c.height=Math.round(f.H*.75);
+  const urls=clips.map(b=>URL.createObjectURL(b));
+  const vs=urls.map(u=>{ const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.src=u; return v; });
+  const ended=Promise.all(vs.map(v=>new Promise(r=>{ v.onended=v.onerror=r; })));
+  drawSheet(c,frame,color,null);
+  const stop=record(c.captureStream(30),2.5e6);
+  await Promise.all(vs.map(v=>v.play()));
+  let live=true; (function tick(){ drawSheet(c,frame,color,vs); live&&requestAnimationFrame(tick); })();
+  await ended; await sleep(150); live=false;
+  const b=await stop(); urls.forEach(u=>URL.revokeObjectURL(u)); return b;
+}
 
 // ── 합성
 async function compose(){
   const f=FRAMES[frame], c=document.createElement("canvas"); c.width=f.W; c.height=f.H; await fontsReady;
   drawSheet(c,frame,color,shots);
   blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));
-  $("out").src=URL.createObjectURL(blob); setMsg("저장하면 이 기기와 구글 드라이브에 함께 보관돼요."); $("save").disabled=false; $("save").textContent="저장하기";
+  $("out").src=URL.createObjectURL(blob); files=[]; $("save").textContent="저장하기";
+  $("save").disabled=true; setMsg(MIME?"영상을 만드는 중이에요… 약 "+INTERVAL+"초 걸려요.":"저장하면 이 기기와 구글 드라이브에 함께 보관돼요.",MIME?"busy":""); if(!MIME) $("save").disabled=false;
 }
 $("again").onclick=()=>show("home");
 
@@ -369,22 +394,26 @@ async function folderId(tok){
   try{ localStorage.setItem("gd_folder",id); }catch{}
   return id;
 }
-async function upload(tok,fn,retry=true){
+async function upload(tok,fn,b,retry=true){
   try{ localStorage.setItem("gd_seen","1"); }catch{}
   const fd=new FormData();
-  fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:"image/jpeg",parents:[await folderId(tok)]})],{type:"application/json"}));
-  fd.append("file",blob);
+  fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:b.type.split(";")[0],parents:[await folderId(tok)]})],{type:"application/json"}));
+  fd.append("file",b);
   const r=await fetch(API+"upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});
   if(r.status===401){ try{ localStorage.removeItem(TK); }catch{} }
-  if(r.status===404&&retry){ try{ localStorage.removeItem("gd_folder"); }catch{} return upload(tok,fn,false); } // 폴더가 삭제된 경우
+  if(r.status===404&&retry){ try{ localStorage.removeItem("gd_folder"); }catch{} return upload(tok,fn,b,false); } // 폴더가 삭제된 경우
   if(!r.ok) throw new Error("드라이브 업로드에 실패했어요. (오류 "+r.status+")");
 }
 $("save").onclick=async()=>{
   $("save").disabled=true;
-  const fn=`네컷_${new Date().toISOString().replace(/[:T]/g,"-").slice(0,19)}.jpg`;
-  const a=document.createElement("a"); a.href=$("out").src; a.download=fn; a.click();
+  if(!files.length){
+    const base=`네컷_${new Date().toISOString().replace(/[:T]/g,"-").slice(0,19)}`;
+    files=[{fn:base+".jpg",b:blob}];
+    if(video) files.push({fn:base+(video.type.includes("mp4")?".mp4":".webm"),b:video});
+    for(const f of files){ const a=document.createElement("a"); a.href=URL.createObjectURL(f.b); a.download=f.fn; a.click(); await sleep(400); }
+  }
   setMsg("기기에 저장했어요. 드라이브에 올리는 중…","busy");
-  try{ await upload(await token(),fn); setMsg("기기와 구글 드라이브에 모두 저장했어요.","ok",CHECK); $("save").textContent="저장 완료"; }
+  try{ const tok=await token(); for(const f of files) if(!f.up){ await upload(tok,f.fn,f.b); f.up=true; } setMsg("기기와 구글 드라이브에 모두 저장했어요.","ok",CHECK); $("save").textContent="저장 완료"; }
   catch(e){ setMsg(`기기에는 저장됐어요. ${e.message}`,"err",WARN); $("save").disabled=false; $("save").textContent="드라이브에 다시 올리기"; }
 };
 
