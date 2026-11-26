@@ -131,7 +131,7 @@ section.on{display:grid}
 <section id="home" class="on">
   <div>
     <h1>네컷</h1>
-    <p>프레임을 고르면 10초마다 한 장씩, 알아서 찍어 드려요.</p>
+    <p>프레임을 고르면 7초마다 한 장씩, 알아서 찍어 드려요.</p>
     <button class="btn paper" id="start">시작하기
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </button>
@@ -184,7 +184,7 @@ section.on{display:grid}
 <script src="config.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
-const INTERVAL = +new URLSearchParams(location.search).get("t") || 10; // 촬영 간격(초)
+const INTERVAL = +new URLSearchParams(location.search).get("t") || 7; // 촬영 간격(초)
 // 시트: 가로형 4:3(1600×1200) / 세로형 3:4(1200×1600). ar = 컷의 가로/세로 비율.
 // 스트립은 인화지 한 장에 같은 줄을 copies만큼 나란히 배치한다.
 const L={W:1600,H:1200}, P={W:1200,H:1600};
@@ -339,21 +339,44 @@ $("again").onclick=()=>show("home");
 const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const WARN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>';
 function setMsg(t,cls="",icon=""){ const m=$("msg"); m.className=cls; m.innerHTML=icon+`<span>${t}</span>`; }
+// 토큰은 약 1시간 유효 → 저장해 두고 재사용(만료 전엔 로그인 창 없음)
+const TK="gd_tok";
+function cached(){ try{ const t=JSON.parse(localStorage.getItem(TK)); return t&&t.exp>Date.now()+60000?t.v:null; }catch{ return null; } }
 function token(){
+  const c=cached(); if(c) return Promise.resolve(c);
   return new Promise((res,rej)=>{
     if(!window.google) return rej(new Error("Google 스크립트를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."));
     google.accounts.oauth2.initTokenClient({
       client_id:CLIENT_ID, scope:"https://www.googleapis.com/auth/drive.file",
-      callback:r=>r.access_token?res(r.access_token):rej(new Error(r.error||"로그인에 실패했어요.")),
+      callback:r=>r.access_token?(()=>{ try{ localStorage.setItem(TK,JSON.stringify({v:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000})); }catch{} res(r.access_token); })():rej(new Error(r.error||"로그인에 실패했어요.")),
       error_callback:e=>rej(new Error(e.type==="popup_closed"?"로그인 창이 닫혔어요.":(e.type||"로그인을 취소했어요."))),
-    }).requestAccessToken();
+    }).requestAccessToken({prompt:localStorage.getItem("gd_seen")?"":"consent"});
   });
 }
-async function upload(tok,fn){
+const FOLDER="Hi-BRC 20th 네컷", API="https://www.googleapis.com/";
+async function folderId(tok){
+  const H={Authorization:"Bearer "+tok};
+  let id=null; try{ id=localStorage.getItem("gd_folder"); }catch{}
+  if(id) return id;
+  const q=encodeURIComponent(`name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const f=await (await fetch(`${API}drive/v3/files?q=${q}&fields=files(id)`,{headers:H})).json();
+  id=f.files&&f.files[0]&&f.files[0].id;
+  if(!id){
+    const r=await fetch(API+"drive/v3/files",{method:"POST",headers:{...H,"Content-Type":"application/json"},body:JSON.stringify({name:FOLDER,mimeType:"application/vnd.google-apps.folder"})});
+    if(!r.ok) throw new Error("드라이브 폴더를 만들지 못했어요. (오류 "+r.status+")");
+    id=(await r.json()).id;
+  }
+  try{ localStorage.setItem("gd_folder",id); }catch{}
+  return id;
+}
+async function upload(tok,fn,retry=true){
+  try{ localStorage.setItem("gd_seen","1"); }catch{}
   const fd=new FormData();
-  fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:"image/jpeg"})],{type:"application/json"}));
+  fd.append("metadata",new Blob([JSON.stringify({name:fn,mimeType:"image/jpeg",parents:[await folderId(tok)]})],{type:"application/json"}));
   fd.append("file",blob);
-  const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});
+  const r=await fetch(API+"upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+tok},body:fd});
+  if(r.status===401){ try{ localStorage.removeItem(TK); }catch{} }
+  if(r.status===404&&retry){ try{ localStorage.removeItem("gd_folder"); }catch{} return upload(tok,fn,false); } // 폴더가 삭제된 경우
   if(!r.ok) throw new Error("드라이브 업로드에 실패했어요. (오류 "+r.status+")");
 }
 $("save").onclick=async()=>{
